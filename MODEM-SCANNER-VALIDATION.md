@@ -15,7 +15,9 @@ Wi-Fi RSSI mapped to virtualRSRP, RSRQ=-10, timingAdvance0. No LTE radio exists.
 CellMonitor is Unsupported and SINR is not displayed on the tested RouterOS.
 
 USB power reset with independent UART power did not show a detach; not a passed
-hotplug test. Full ESP SD-WAN integration and physical hotplug acceptance remain
+hotplug test. A separate10s ESP EN-low reset produced realUSB disappearance,
+re-enumeration and automaticAPN/ICMP/HTTP recovery. That is a cold reconnect,
+not physical cable hot-unplug. Full ESP SD-WAN integration and physical hotplug acceptance remain
 open. One earlier public-ping test had4/5 replies, retained as failed; subsequent
 3reset functional cycles each had local/public5/5 and HTTP. No zero-loss guarantee.
 

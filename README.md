@@ -14,7 +14,9 @@ ICMP/HTTP viaLTE, realWi-Fi network scan, monitor cell/RF fields and3reset recov
 UART data blackhole/recovery and CFUN radiooff/on passed; invalidAPN, unknownSSID
 and wrongkey stopped old forwarding and recovered after restoring the originalAPN.
 USB power reset did NOT detach this self-powered device while UART supplied power.
-That outcome is not a successful hotplug test. Bridge was left unchanged.
+That outcome is not a successful hotplug test. A separate hardware EN-low reset
+proved USB detach/re-enumeration and Internet recovery, without a cable unplug.
+Bridge was left unchanged.
 
 ## Build and host checks
 
