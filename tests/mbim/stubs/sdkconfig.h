@@ -1,0 +1,1 @@
+#define CONFIG_EMU_MBIM 1

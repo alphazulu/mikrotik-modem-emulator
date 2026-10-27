@@ -1,0 +1,30 @@
+diff --git a/src/class/cdc/cdc_device.c b/src/class/cdc/cdc_device.c
+index c499756..dcb0c1c 100644
+--- a/src/class/cdc/cdc_device.c
++++ b/src/class/cdc/cdc_device.c
+@@ -293,6 +293,10 @@ void cdcd_reset(uint8_t rhport) {
+ }
+ 
+ uint16_t cdcd_open(uint8_t rhport, const tusb_desc_interface_t* itf_desc, uint16_t max_len) {
++#if defined(CONFIG_EMU_LINUX_RNDIS) && CONFIG_EMU_LINUX_RNDIS
++  // Linux RNDIS shares ACM subclass; reserve protocol ff for the network driver.
++  if (itf_desc->bInterfaceProtocol == 0xff) return 0;
++#endif
+   // Only support ACM subclass
+   TU_VERIFY(TUSB_CLASS_CDC == itf_desc->bInterfaceClass &&
+               CDC_COMM_SUBCLASS_ABSTRACT_CONTROL_MODEL == itf_desc->bInterfaceSubClass,
+diff --git a/src/device/usbd.h b/src/device/usbd.h
+index aab2617..4dbeb83 100644
+--- a/src/device/usbd.h
++++ b/src/device/usbd.h
+@@ -960,8 +960,8 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
+ // RNDIS Descriptor Templates
+ //--------------------------------------------------------------------+
+ 
+-#if 0
+-/* Windows XP */
++#if defined(CONFIG_EMU_LINUX_RNDIS) && CONFIG_EMU_LINUX_RNDIS
++/* Windows XP / Linux f_rndis compatibility for the isolated emulator. */
+ #define TUD_RNDIS_ITF_CLASS    TUSB_CLASS_CDC
+ #define TUD_RNDIS_ITF_SUBCLASS CDC_COMM_SUBCLASS_ABSTRACT_CONTROL_MODEL
+ #define TUD_RNDIS_ITF_PROTOCOL 0xFF /* CDC_COMM_PROTOCOL_MICROSOFT_RNDIS */

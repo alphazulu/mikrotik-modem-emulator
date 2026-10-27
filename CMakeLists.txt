@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.16)
+if(NOT DEFINED ENV{EMU_USB_PATH})
+    message(FATAL_ERROR "Set EMU_USB_PATH to the pinned private esp-usb checkout")
+endif()
+set(EXTRA_COMPONENT_DIRS "$ENV{EMU_USB_PATH}/device/esp_tinyusb")
+set(COMPONENTS main)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(sdwan_esp32_lte)

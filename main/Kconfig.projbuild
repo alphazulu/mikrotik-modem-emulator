@@ -1,0 +1,13 @@
+menu "SD-WAN USB modem emulator"
+config EMU_LINUX_RNDIS
+    bool "Use Linux f_rndis compatible 02/02/ff class"
+    default y
+config EMU_AT_USB
+    bool "Add experimental CDC ACM AT port beside RNDIS"
+    default n
+    depends on TINYUSB_CDC_ENABLED
+config EMU_MBIM
+    bool "Use MBIM instead of RNDIS (experimental)"
+    default n
+    depends on !EMU_AT_USB
+endmenu
