@@ -86,6 +86,8 @@ credentials. Порт открывается с DTR/RTS=False, чтобы не �
 декодирования нужен `libmbim-glib4` либо `MODEM_LIBMBIM_PATH`.
 
 ```sh
+python3 -m venv .venv
+. .venv/bin/activate
 python3 -m pip install -r requirements.txt
 python3 tools/check.py
 python3 tools/check_usb.py

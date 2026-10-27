@@ -85,6 +85,8 @@ system prerequisites. Install `requirements.txt`. Independent decoding requires
 `libmbim-glib4` or `MODEM_LIBMBIM_PATH`.
 
 ```sh
+python3 -m venv .venv
+. .venv/bin/activate
 python3 -m pip install -r requirements.txt
 python3 tools/check.py
 python3 tools/check_usb.py
