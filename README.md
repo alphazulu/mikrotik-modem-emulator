@@ -1,30 +1,92 @@
-# MikroTik modem emulator — ESP32-S3 source draft
+# MikroTik Modem Emulator
 
-Wi-Fi-backed USB modem emulation for RouterOS testbeds. The device presents MBIM
-or RNDIS; the SD-WAN controller stays on MikroTik. No additional telemetry APIs,
-HTTP endpoints or external fetch calls are needed for modem operation.
+**Русский** · [English](README.en.md)
 
-This local draft is NOT a completed release: physical hot USB unplug/replug and
-end-to-end SD-WAN with ESP still need acceptance. CellMonitor returns Unsupported
-and SINR was not displayed on the tested RB750Gr3/RouterOS7.11.2. Radio/SIM fields
-are virtual; this is not a cellular radio or a hardware capacity benchmark.
+Эмулятор USB-модема MBIM/RNDIS на ESP32-S3 с выходом в интернет через Wi-Fi для стендов MikroTik.
 
-Verified on the isolated hEX: realLTE interface, automatic MBIM APN-to-Wi-Fi,
-ICMP/HTTP viaLTE, realWi-Fi network scan, monitor cell/RF fields and3reset recoveries.
-UART data blackhole/recovery and CFUN radiooff/on passed; invalidAPN, unknownSSID
-and wrongkey stopped old forwarding and recovered after restoring the originalAPN.
-USB power reset did NOT detach this self-powered device while UART supplied power.
-That outcome is not a successful hotplug test. A separate hardware EN-low reset
-proved USB detach/re-enumeration and Internet recovery, without a cable unplug.
-Bridge was left unchanged.
+*Wi-Fi-backed USB MBIM/RNDIS modem emulator on ESP32-S3 for MikroTik testbeds.*
 
-## Build and host checks
+ESP изображает модем и канал доступа. Контроллер SD-WAN выполняется на MikroTik.
+Для штатной работы не нужны дополнительные API, HTTP-endpoints или внешние вызовы:
+RouterOS передаёт Wi-Fi-профиль через стандартный MBIM APN.
 
-Linux/WSL with Python3, GCC/gcov, Git, CMake, libmbim runtime and ESP-IDF prerequisites.
-Python dependencies: python3 -m pip install -r requirements.txt.
-Use Ubuntu's libmbim-glib4 or MODEM_LIBMBIM_PATH for independent decoding.
+**Статус: экспериментальная прошивка.** Основные сценарии проверены на отдельном
+hEX RB750Gr3 с RouterOS 7.11.2. Полная приёмка ещё не завершена: горячее извлечение
+кабеля и сквозной SD-WAN с ESP остаются открытыми. Сотовой радиочасти у ESP нет;
+SIM, оператор и LTE-поля — эмуляция.
+
+```mermaid
+flowchart LR
+    AP[Wi-Fi AP] <-->|Wi-Fi| ESP[ESP32-S3: STA + IPv4 NAPT]
+    ESP <-->|USB MBIM / RNDIS| ROS[MikroTik RouterOS]
+    PC[UART: прошивка и тестовые отказы] -.-> ESP
+```
+
+## Возможности и проверенные ограничения
+
+| Возможность | Результат |
+|---|---|
+| USB MBIM → настоящий `lte1` | Проверено |
+| APN → SSID/пароль Wi-Fi | Автоматически, включая восстановление после сброса |
+| ICMP и HTTP через LTE с самого роутера | Проверено |
+| Штатный Network Scanner | Показывает реальные Wi-Fi SSID |
+| LTE Monitor | Модель, версия, SIM/оператор и виртуальные cell/RF-поля видны |
+| Обрыв данных при живом USB и возврат | Проверено, локальный шлюз остаётся доступен |
+| CFUN 0/1, неверный APN/SSID/пароль | Проверены отключение и восстановление |
+| Холодное USB-переподключение | Исчезновение устройства, повторное обнаружение и интернет проверены |
+| Cell Monitor / SINR | Cell Monitor возвращает Unsupported; SINR не отображается на тестовой версии |
+| RNDIS / RNDIS+CDC | Дополнительные профили; текущая аппаратная приёмка относится к MBIM |
+
+USB power reset на hEX при отдельном питании ESP через UART не вызвал отключения
+устройства. Этот тест не засчитан как hotplug. Отдельный аппаратный сброс EN на
+10 секунд подтвердил холодное USB-переподключение. Горячее извлечение кабеля не
+проверено. В одном раннем внешнем ping-тесте было 4/5 ответов; гарантии отсутствия
+потерь и длительной стабильности не заявляются.
+
+RSRP отображает виртуальную величину на основе Wi-Fi RSSI; Cell ID/PCI выводятся
+из BSSID, диапазон/EARFCN виртуальные. RSRQ и тестовый ATDS SINR синтетические.
+Это не измерения настоящего LTE и не аппаратный тест производительности SD-WAN.
+Подробнее: [результаты проверки](MODEM-SCANNER-VALIDATION.md).
+
+## Профили и плата
+
+- `mbim`: MBIM control + NTB16, IPv4 `192.0.2.2/32` через IPConfiguration, APN управляет Wi-Fi.
+- `hilink`: RNDIS, DHCP от ESP, настройка Wi-Fi через отдельный UART.
+- `at`: RNDIS с экспериментальным CDC ACM; AT-chat на проверенном RouterOS не заработал.
+
+Нужен ESP32-S3 с native USB. USB подключается к MikroTik; отдельный USB–UART нужен
+для прошивки и тестового управления, а не для штатного выхода в интернет.
+Проверенная плата имела 16 MiB flash и 8 MiB PSRAM. Текущая сборка не использует
+PSRAM, layout занимает первые 4 MiB, app partition — 2 MiB. USB ограничен Full Speed.
+Поддержаны IPv4 и WPA2 PSK/открытые сети; WPA3-only, Enterprise/EAP и IPv6 не реализованы.
+Wi-Fi upstream не должен пересекаться с `192.0.2.0/24`.
+
+## APN и настройка
+
+Для MBIM в RouterOS: `apn=wifi`, `user=SSID`, `password=Wi-Fi key`,
+`authentication=pap`, `ip-type=ipv4`, `use-network-apn=no`.
+Имя APN-профиля локально для RouterOS. Поля маршрута/DNS задаются через APN.
+Настройки ESP остаются в RAM; после перезапуска RouterOS снова передаёт профиль.
+Явный `AT&W` сохраняет профиль в NVS и автоматически не вызывается.
+
+[Схема APN/Wi-Fi](APN-WIFI.md) содержит синтетические примеры.
+Для отдельного UART подключения:
+
+```text
+python tools/configure.py --port <ESP_UART_PORT> --ssid DemoAP
+```
+
+Пароль вводится скрытым prompt, не через argv. Утилита проверяет ATI до передачи
+credentials. Порт открывается с DTR/RTS=False, чтобы не сбрасывать ESP через CH343.
+
+## Сборка и host-тесты
+
+Подготовленный хост: Linux/WSL Ubuntu 24.04, Python 3.12, GCC/gcov, Git, CMake и
+системные prerequisites ESP-IDF. Установите `requirements.txt`; для независимого
+декодирования нужен `libmbim-glib4` либо `MODEM_LIBMBIM_PATH`.
 
 ```sh
+python3 -m pip install -r requirements.txt
 python3 tools/check.py
 python3 tools/check_usb.py
 python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -36,21 +98,31 @@ python3 tools/build.py --native-sdk --profile mbim
 python3 tools/verify.py --profiles mbim
 ```
 
-Dependencies are pinned. SDK/tool caches stay outside source control. Builds are
-single-job/low-priority and do not access hardware. A surrounding SD-WAN soak,
-if present, prevents dependency/build operations. No deployment command runs
-implicitly. Verify the chip/flash, back up original flash privately, verify image
-hashes and perform a separate verify-flash before using a new board.
+IDF 5.5.2, esp-usb и TinyUSB закреплены по commit в `tools/build.py`.
+SDK и toolchain не входят в репозиторий. Сборка однопоточная, с низким приоритетом;
+если обнаружен активный соседний SD-WAN soak, она откладывается. Команды сборки
+не прошивают устройство. Артефакты сохраняют имя `sdwan_esp32_lte` для совместимости
+с проверенной прошивкой. Копии C-исходников совпадают с аппаратно проверенным build;
+самостоятельная упаковка прошла 14 Python-тестов, но её новая native-сборка ещё не
+повторялась. Host-проверка не заменяет проверку конкретной платы.
 
-The tested board had16MiB flash/8MiB PSRAM; this image uses noPSRAM and the first4MiB
-flash layout with a2MiB app partition. NativeUSB goes to hEX; a separateUART cable
-serves flashing/control. Do not change eFuse or erase owner flash blindly.
+До первой записи определить чип/flash, сохранить приватный backup, сверить layout
+и SHA256. После записи выполнить отдельную verify-flash. Не менять eFuse и не
+стирать исходную flash без необходимости. Периодической записи статистики нет;
+системные операции SDK при старте могут писать flash.
 
-MBIM APN: apn=wifi, user=SSID, password=Wi-Fi key, authentication=pap, ip-type=ipv4,
-use-network-apn=no. Settings stay in RAM unless AT&W is explicitly requested.
-See [APN mapping](APN-WIFI.md). The current firmware artifact name remains
-sdwan_esp32_lte for continuity with the hardware-validated image.
+## Повторное использование в QEMU CHR/x86
 
-See [portable core / QEMU reuse](docs/PORTABLE-CORE.md). The QEMU MBIM adapter is
-not implemented here. Proprietary images, router exports, credentials, raw hardware
-logs and full-flash backups are excluded from this source draft.
+`components/modem` и `components/mbim` не зависят от ESP-IDF/TinyUSB. Их можно
+использовать в usbredir эмуляторе через небольшой C ABI/ctypes adapter. Нужно
+адаптировать USB transport, APN backend и IP/ARP; Wi-Fi/NAPT/NVS из ESP не переносить.
+QEMU MBIM adapter здесь **ещё не реализован**.
+
+[Portable core](docs/PORTABLE-CORE.md) · [план переноса](docs/QEMU-MBIM-PLAN.md).
+
+## Состав публикации
+
+Только исходники, синтетические тесты и обезличенная документация. Пароли, реальные
+SSID/BSSID, конфиги и идентификаторы владельца, raw-логи, скриншоты, полные backup,
+RouterOS-образы/лицензии и ELF с локальными путями исключены. Данные для примеров
+в тестах не являются пользовательскими credentials. [Зависимости](THIRD_PARTY.md).
